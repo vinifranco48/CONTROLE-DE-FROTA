@@ -59,7 +59,7 @@ c = conn.cursor()
 def create_sqlite_table():
     c.execute('''CREATE TABLE IF NOT EXISTS notas
                  (data TEXT, placa TEXT, modelo TEXT, km INTEGER, nota TEXT, fornecedor TEXT, 
-                  tipo_servico TEXT, item TEXT, peca TEXT, quantidade INTEGER, valor REAL, observacoes TEXT)''')
+                  tipo_servico TEXT, peca TEXT, quantidade INTEGER, valor REAL, servico TEXT, observacoes TEXT)''')
     conn.commit()
     
 # Função para criar a tabela de carros no SQLite
@@ -95,11 +95,10 @@ def carregar_fornecedores():
     return [row[0] for row in c.fetchall()]
 
 # Função para adicionar novo registro à tabela de notas no SQLite
-def add_record_sqlite(data, placa, modelo, km, nota, fornecedor, tipo_servico, item, peca, quantidade, valor, observacoes):
-    c.execute("INSERT INTO notas (data, placa, modelo, km, nota, fornecedor, tipo_servico, item, peca, quantidade, valor, observacoes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", 
-              (data, placa, modelo, km, nota, fornecedor, tipo_servico, item, peca, quantidade, valor, observacoes))
+def add_record_sqlite(data, placa, modelo, km, nota, fornecedor, tipo_servico, peca, quantidade, valor, servico, observacoes):
+    c.execute("INSERT INTO notas (data, placa, modelo, km, nota, fornecedor, tipo_servico, peca, quantidade, valor, servico, observacoes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", 
+              (data, placa, modelo, km, nota, fornecedor, tipo_servico, peca, quantidade, valor, servico, observacoes))
     conn.commit()
-
 
 
 # Inicializar dados em cache
@@ -355,8 +354,25 @@ if 'servico' not in st.session_state:
 ]
 if 'nota_atual' not in st.session_state:
     st.session_state['nota_atual'] = None  # Inicializar o número da nota atual
-# Função para adicionar carro
-# Função para adicionar carro
+if 'macro' not in st.session_state:
+    st.session_state['macro'] = [
+        'Manutenção Preventiva',
+        'Manutenção Corretiva',
+        'Manutenção Preditiva',
+        'Manutenção Detectiva',
+        'Manutenção Proativa',
+        'Reparação',
+        'Substituição de Peças',
+        'Inspeção',
+        'Lubrificação',
+        'Ajustes',
+        'Alinhamento e Balanceamento',
+        'Troca de Fluídos',
+        'Teste de Diagnóstico',
+        'Limpeza e Conservação',
+        'Atualização de Software'
+
+    ]
 # Função para adicionar carro
 def adicionar_carro():
     placa_carro = st.text_input('Placa do Carro')
@@ -388,8 +404,8 @@ def registrar_nota(sheet):
         st.warning("Nenhum fornecedor cadastrado. Por favor, adicione fornecedores primeiro.")
         return
 
-    # Inicializar 'nota_atual' se não existir ou se estiver definido como None
-    if st.session_state.get('nota_atual') is None:
+    # Inicializar 'nota_atual' se não existir ou se for None
+    if 'nota_atual' not in st.session_state or st.session_state['nota_atual'] is None:
         st.session_state['nota_atual'] = {'numero_nota': '', 'itens': []}
 
     # Informações gerais da nota
@@ -399,56 +415,69 @@ def registrar_nota(sheet):
     data = st.date_input('Data')
     km = st.number_input('Quilometragem', min_value=0)
 
-    # Manter o número da nota até que seja finalizada
-    if not st.session_state['nota_atual'].get('numero_nota'):
+    # Número da nota
+    if not st.session_state['nota_atual']['numero_nota']:
         st.session_state['nota_atual']['numero_nota'] = st.text_input('Número da Nota')
     else:
         st.text(f"Número da Nota: {st.session_state['nota_atual']['numero_nota']}")
 
     # Formulário para adicionar itens à nota
     with st.form(key='registro_item_form'):
-        tipo_servico = st.text_input('Tipo de Serviço')
-        servico_selecionado = st.selectbox('Escolha o Serviço', st.session_state['servico'])
-        peça_selecionada = st.selectbox('Escolha uma peça', st.session_state['pecas'])
-        item = st.text_input('Item da Nota')
-        valor = st.number_input('Valor do Item', min_value=0.0)
-        quantidade = st.number_input('Quantidade', min_value=1, value=1)
+        col1, col2 = st.columns(2)
+        with col1:
+            macro = st.selectbox("Escolha macro", st.session_state['macro'])
+            servico = st.selectbox('Escolha o Serviço', st.session_state['servico'])
+        with col2:
+            peca = st.selectbox('Escolha uma peça', st.session_state['pecas'])
+        
+        col3, col4 = st.columns(2)
+        with col3:
+            valor = st.number_input('Valor do Item', min_value=0.0)
+        with col4:
+            quantidade = st.number_input('Quantidade', min_value=1, value=1)
+        
         observacoes = st.text_area('Observações')
-        adicionar_item_button = st.form_submit_button(label='Adicionar Item à Nota')
+        
+        adicionar_item_button = st.form_submit_button('Adicionar Item à Nota')
 
         if adicionar_item_button:
             novo_item = {
-                'Data': data.strftime('%d/%m/%Y'),
-                'Placa': placa_carro,
-                'Modelo': modelo_carro,
-                'KM': km,
-                'Nota': st.session_state['nota_atual']['numero_nota'],
-                'Fornecedor': fornecedor,
-                'Tipo de Serviço': tipo_servico,
-                'Item da Nota': item,
-                'Valor': valor,
-                'Quantidade': quantidade,  
-                'Serviço': servico_selecionado,
-                'Peça': peça_selecionada,
-                'Observações': observacoes
+                'data': data.strftime('%Y-%m-%d'),
+                'placa': placa_carro,
+                'modelo': modelo_carro,
+                'km': km,
+                'nota': st.session_state['nota_atual']['numero_nota'],
+                'fornecedor': fornecedor,
+                'tipo_servico': macro,
+                'peca': peca,
+                'quantidade': quantidade,
+                'valor': valor,
+                'servico': servico,
+                'observacoes': observacoes
             }
             st.session_state['nota_atual']['itens'].append(novo_item)
+            add_record_sqlite(**novo_item)
             adicionar_registro(sheet, novo_item)
-            add_record_sqlite(data.strftime('%Y-%m-%d'), placa_carro, modelo_carro, km, st.session_state['nota_atual']['numero_nota'], fornecedor, tipo_servico, item, peça_selecionada, quantidade, valor, observacoes)
             st.success('Item adicionado à nota com sucesso!')
 
     # Exibir itens da nota atual
     if st.session_state['nota_atual']['itens']:
         st.subheader("Itens na nota atual:")
         for idx, item in enumerate(st.session_state['nota_atual']['itens'], 1):
-            st.text(f"{idx}. {item['Item da Nota']} - Quantidade: {item['Quantidade']} - Valor: R${item['Valor']:.2f}")
+            st.text(f"{idx}. {item['peca']} - Quantidade: {item['quantidade']} - Valor: R${item['valor']:.2f}")
 
-    finalizar_nota = st.button('Finalizar Nota')
-    if finalizar_nota:
-        st.session_state['nota_atual'] = {'numero_nota': '', 'itens': []}  # Resetar todas as informações da nota atual
-        st.success('Nota finalizada!')
+    if st.button('Finalizar Nota'):
+        if st.session_state['nota_atual']['itens']:
+            st.subheader('Resumo da Nota')
+            total = sum(item['quantidade'] * item['valor'] for item in st.session_state['nota_atual']['itens'])
+            st.write(f"Total da Nota: R$ {total:.2f}")
+            
+            st.session_state['nota_atual'] = {'numero_nota': '', 'itens': []}
+            st.success('Nota finalizada!')
+        else:
+            st.warning('Não há itens na nota atual para finalizar.')
+        
         st.experimental_rerun()
- 
 
 # Função para adicionar novo registro à planilha
 def adicionar_registro(sheet, registro):
