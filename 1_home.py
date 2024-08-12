@@ -384,7 +384,10 @@ def adicionar_carro():
             st.success(f'Carro {nome_modelo} ({placa_carro}) adicionado!')
         else:
             st.warning('Este carro já está cadastrado.')
-
+if 'carros' not in st.session_state:
+    st.session_state['carros'] = carregar_carros(conn)
+if 'fornecedores' not in st.session_state:
+    st.session_state['fornecedores'] = carregar_fornecedores(conn)
 # Função para adicionar fornecedor
 def adicionar_fornecedor():
     nome_fornecedor = st.text_input('Nome do Fornecedor')
