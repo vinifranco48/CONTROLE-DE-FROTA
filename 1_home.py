@@ -399,6 +399,19 @@ def adicionar_fornecedor():
         else:
             st.warning('Este fornecedor já está cadastrado.')
 
+def carregar_carros(conn):
+    c = conn.cursor()
+    c.execute("SELECT placa, modelo FROM carros")
+    carros = [{'placa': row[0], 'modelo': row[1]} for row in c.fetchall()]
+    return carros
+
+# Função para carregar fornecedores do SQLite
+def carregar_fornecedores(conn):
+    c = conn.cursor()
+    c.execute("SELECT nome FROM fornecedores")
+    fornecedores = [row[0] for row in c.fetchall()]
+    return fornecedores
+
 def registrar_nota(sheet):
     if not st.session_state.get('carros'):
         st.warning("Nenhum carro cadastrado. Por favor, adicione carros primeiro.")
