@@ -247,7 +247,8 @@ if 'pecas' not in st.session_state:
 'Virabrequim',
 'Volante',
 'Volante do motor',
-'Wastegate'
+'Wastegate',
+'Abraçadeira plastica'
 ]
 
 if 'servico' not in st.session_state:
