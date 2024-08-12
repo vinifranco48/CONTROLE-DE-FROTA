@@ -248,7 +248,8 @@ if 'pecas' not in st.session_state:
 'Volante',
 'Volante do motor',
 'Wastegate',
-'Abraçadeira plastica'
+'Abraçadeira plastica',
+'Filtro separador agua'
 ]
 
 if 'servico' not in st.session_state:
