@@ -215,7 +215,8 @@ if 'pecas' not in st.session_state:
 'Filtro separador agua',
 'Filtro ar motor', 
 'nenhum',
-'óleo'
+'óleo',
+'estopa'
 ]
 
 if 'servico' not in st.session_state:
