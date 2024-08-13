@@ -41,71 +41,32 @@ def connect_to_gsheet(sheet_name):
         st.error(f"Erro ao acessar a planilha: {e}")
         return None
 
-# Função para criar cabeçalhos na planilha, se ainda não existirem
 def criar_colunas(sheet):
     colunas = [
-        'Data', 'Placa', 'Modelo', 'KM', 'Nota', 'Fornecedor','Tipo de Serviço', 'Item da Nota', 'Valor','Quantidade', 'Peça', 'Observações'
+        'Data', 'Placa', 'Modelo', 'KM', 'Nota', 'Fornecedor', 'Tipo de Serviço', 'Item da Nota', 'Valor', 'Quantidade', 'Peça', 'Observações'
     ]
     existing_headers = sheet.row_values(1)
     if not existing_headers or set(colunas) != set(existing_headers):
         sheet.insert_row(colunas, 1)
         st.success('Cabeçalhos criados na planilha!')
 
-# Criar conexão com o banco de dados SQLite
-conn = sqlite3.connect('database.db')
-c = conn.cursor()
-
-# Função para criar a tabela de notas no SQLite, se ainda não existir
-def create_sqlite_table():
-    c.execute('''CREATE TABLE IF NOT EXISTS notas
-                 (data TEXT, placa TEXT, modelo TEXT, km INTEGER, nota TEXT, fornecedor TEXT, 
-                  tipo_servico TEXT, peca TEXT, quantidade INTEGER, valor REAL, observacoes TEXT)''')
-    conn.commit()
-    
-# Função para criar a tabela de carros no SQLite
-def create_carros_table():
-    c.execute('''CREATE TABLE IF NOT EXISTS carros
-                 (placa TEXT PRIMARY KEY, modelo TEXT)''')
-    conn.commit()
-
-# Função para criar a tabela de fornecedores no SQLite
-def create_fornecedores_table():
-    c.execute('''CREATE TABLE IF NOT EXISTS fornecedores
-                 (nome TEXT PRIMARY KEY)''')
-    conn.commit()
-
-# Função para adicionar carro no SQLite
-def add_carro_sqlite(placa, modelo):
-    c.execute("INSERT OR IGNORE INTO carros (placa, modelo) VALUES (?, ?)", (placa, modelo))
-    conn.commit()
-
-# Função para adicionar fornecedor no SQLite
-def add_fornecedor_sqlite(nome):
-    c.execute("INSERT OR IGNORE INTO fornecedores (nome) VALUES (?)", (nome,))
-    conn.commit()
-
-# Função para carregar carros do SQLite
-def carregar_carros():
-    c.execute("SELECT placa, modelo FROM carros")
-    return [{'placa': row[0], 'modelo': row[1]} for row in c.fetchall()]
-
-# Função para carregar fornecedores do SQLite
-def carregar_fornecedores():
-    c.execute("SELECT nome FROM fornecedores")
-    return [row[0] for row in c.fetchall()]
-
-# Função para adicionar novo registro à tabela de notas no SQLite
-def add_record_sqlite(data, placa, modelo, km, nota, fornecedor, tipo_servico, peca, quantidade, valor, observacoes):
-    c.execute("INSERT INTO notas (data, placa, modelo, km, nota, fornecedor, tipo_servico, peca, quantidade, valor,  observacoes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", 
-              (data, placa, modelo, km, nota, fornecedor, tipo_servico, peca, quantidade, valor, observacoes))
-    conn.commit()
-
-
 # Inicializar dados em cache
 if 'carros' not in st.session_state:
-    st.session_state['carros'] = []
+    st.session_state['carros'] = [
+        {'placa': 'PSK9760', 'modelo': 'S10 ESTREITO'},
+        {'placa': 'PTA8229', 'modelo': 'S10'},
+        {'placa': 'PTP4215', 'modelo': 'CAMINHÃO VOLVO'},
+        {'placa': 'PTQ9932', 'modelo': 'HILUX'},
+        {'placa': 'PTS8I32', 'modelo': 'S10'},
+        {'placa': 'ROC0A68', 'modelo': 'SAVEIRO'},
+        {'placa': 'SNJ8I23', 'modelo': 'FIAT TORO'},
+        {'placa': 'SMP1C48', 'modelo': 'CAMINHÃO SPRINTER'},
+        {'placa': 'PTC1086', 'modelo': 'F-350'}
+    ]
+
 if 'fornecedores' not in st.session_state:
     st.session_state['fornecedores'] = []
+
 if 'pecas' not in st.session_state:
     st.session_state['pecas'] = ["Adesivos", "Aerofólio", "Airbag", "Alavanca de câmbio", "Alternador", "Amortecedor de direção", "Amortecedor dianteiro", "Amortecedor traseiro", "Amortecedores", "Amortecedores de capô", "Amortecedores de porta-malas", "Anéis de pistão", "Anéis de vedação", "Anel de vedação", "Antena", "Atuador da marcha lenta", "Atuador de ABS", "Atuador de corpo de borboleta", "Atuador de marcha lenta", "Bandejas de suspensão", "Barra de direção", "Barra estabilizadora", "Barras de torção", "Batentes", "Bateria", "Bico injetor", "Bicos injetores", "Bielas", "Bloco do motor", "Bobina de ignição", "Bomba d'água", "Bomba de ABS", "Bomba de alta pressão de combustível", "Bomba de combustível", "Bomba de combustível elétrica", "Bomba de direção hidráulica", "Bomba de óleo", "Bomba de vácuo", "Borrachas de vedação", "Botão do vidro elétrico", "Braço oscilante", "Braços de direção", "Bucha de bandeja", "Buchas", "Buchas de suspensão", "Buzina", "Cabeçote", "Cabo de ignição", "Cabo de vela", "Cabo do acelerador", "Cabos de velas", "Caixa de direção", "Caixa de fusíveis", "Caixa de transferência", "Câmbio (transmissão manual ou automática)", "Capô", "Cardan", "Carter", "Cárter do óleo", "Catalisador", "Central de ABS", "Central de alarme", "Central de injeção eletrônica", "Centralina (ECU)", "Centralina eletrônica", "Chave de ignição", "Chave de roda", "Chicote elétrico", "Cilindro mestre de freio", "Cilindros de roda", "Cinto de segurança", "Coletor de admissão", "Coletor de escape", "Coluna de direção", "Compressor de ar-condicionado", "Condensador de ar-condicionado", "Conjunto de cabeçote", "Conjunto de embreagem do ar-condicionado", "Conjunto de motor", "Conjunto de válvulas", "Corpo de borboleta", "Correia dentada", "Correias auxiliares", "Corrente de distribuição", "Coxins da suspensão", "Coxins do motor", "Diferencial", "Disco de embreagem", "Discos de freio", "Distribuidor", "EGR (Exhaust Gas Recirculation)", "Eixo cardan", "Eixo de comando", "Eixo de transmissão", "Eixo dianteiro", "Eixo piloto", "Eixo traseiro", "Eletroventilador", "Emblemas", "Embreagem", "Embreagem de ventilador", "Embreagem do ventilador", "Espelho retrovisor interno", "Espelhos de cortes", "Espelhos retrovisores", "Estepe", "Evaporador de ar-condicionado", "Extintor de incêndio", "Faróis", "Faróis de neblina", "Fechaduras", "Filtro de ar", "Filtro de ar-condicionado", "Filtro de cabine", "Filtro de cabine (ar-condicionado)", "Filtro de combustível", "Filtro de óleo", "Filtro secador", "Flanges", "Fluido de freio", "Forros de porta", "Freio de mão", "Fusíveis", "Fusível térmico", "Grade do para-choque", "Grade frontal", "Hidrovácuo", "Injetor de combustível", "Injetores de combustível", "Intercooler", "Interruptor de ignição", "Interruptor de luz de freio", "Interruptor de ré", "Interruptor de temperatura", "Interruptores", "Jogo de juntas", "Junta da tampa de válvulas", "Junta de cabeçote", "Junta de cárter", "Junta de vedação", "Juntas homocinéticas", "Juntas universais", "Kit de embreagem", "Kit de juntas", "Kit de juntas de motor", "Kit de vedação", "Lanternas de posição", "Lanternas traseiras", "Luz de placa", "Luzes de freio", "Luzes de ré", "Luzes indicadoras de direção", "Luzes internas", "Macaco", "Mangueira de radiador", "Mangueiras", "Mangueiras de direção hidráulica", "Mangueiras de freio", "Mangueiras de radiador", "Mangueiras de vácuo", "Módulo de ABS", "Módulo de controle de tração", "Módulo de ignição", "Módulo de injeção eletrônica", "Mola de suspensão", "Molas", "Molas helicoidais", "Molduras externas", "Motor", "Motor de arranque", "Motor do vidro elétrico", "Motores do limpador de para-brisa", "Painel de instrumentos", "Palhetas do limpador de para-brisa", "Para-barros", "Para-brisa", "Para-choques", "Parafuso de dreno do óleo", "Parafusos", "Parafusos de roda", "Pastilhas de freio Traseira", "Pastilhas de freio Dianteira", 'Pedal de embreagem',
 'Pedal de freio',
@@ -249,7 +210,8 @@ if 'pecas' not in st.session_state:
 'Volante do motor',
 'Wastegate',
 'Abraçadeira plastica',
-'Filtro separador agua'
+'Filtro separador agua',
+'Filtro ar motor'
 ]
 
 if 'servico' not in st.session_state:
@@ -375,71 +337,31 @@ if 'macro' not in st.session_state:
         'Atualização de Software'
 
     ]
-# Função para adicionar carro
-def adicionar_carro():
-    placa_carro = st.text_input('Placa do Carro')
-    nome_modelo = st.text_input('Nome do Modelo')
-    if st.button('Adicionar Carro'):
-        if not any(carro['placa'] == placa_carro for carro in st.session_state['carros']):
-            st.session_state['carros'].append({'placa': placa_carro, 'modelo': nome_modelo})
-            add_carro_sqlite(placa_carro, nome_modelo)
-            st.success(f'Carro {nome_modelo} ({placa_carro}) adicionado!')
-        else:
-            st.warning('Este carro já está cadastrado.')
-if 'carros' not in st.session_state:
-    st.session_state['carros'] = carregar_carros(conn)
-if 'fornecedores' not in st.session_state:
-    st.session_state['fornecedores'] = carregar_fornecedores(conn)
-# Função para adicionar fornecedor
-def adicionar_fornecedor():
-    nome_fornecedor = st.text_input('Nome do Fornecedor')
-    if st.button('Adicionar Fornecedor'):
-        if nome_fornecedor not in st.session_state['fornecedores']:
-            st.session_state['fornecedores'].append(nome_fornecedor)
-            add_fornecedor_sqlite(nome_fornecedor)
-            st.success(f'Fornecedor {nome_fornecedor} adicionado!')
-        else:
-            st.warning('Este fornecedor já está cadastrado.')
-
-def carregar_carros(conn):
-    c = conn.cursor()
-    c.execute("SELECT placa, modelo FROM carros")
-    carros = [{'placa': row[0], 'modelo': row[1]} for row in c.fetchall()]
-    return carros
-
-# Função para carregar fornecedores do SQLite
-def carregar_fornecedores(conn):
-    c = conn.cursor()
-    c.execute("SELECT nome FROM fornecedores")
-    fornecedores = [row[0] for row in c.fetchall()]
-    return fornecedores
 
 def registrar_nota(sheet):
-    if not st.session_state.get('carros'):
-        st.warning("Nenhum carro cadastrado. Por favor, adicione carros primeiro.")
-        return
-    if not st.session_state.get('fornecedores'):
-        st.warning("Nenhum fornecedor cadastrado. Por favor, adicione fornecedores primeiro.")
-        return
-
-    # Inicializar 'nota_atual' se não existir ou se for None
     if 'nota_atual' not in st.session_state or st.session_state['nota_atual'] is None:
         st.session_state['nota_atual'] = {'numero_nota': '', 'itens': []}
 
-    # Informações gerais da nota
     placa_carro = st.selectbox('Selecione a Placa do Carro', [carro['placa'] for carro in st.session_state['carros']])
     modelo_carro = next(carro['modelo'] for carro in st.session_state['carros'] if carro['placa'] == placa_carro)
-    fornecedor = st.selectbox('Selecione o Fornecedor', st.session_state['fornecedores'])
+    
+    novo_fornecedor = st.text_input('Novo Fornecedor (deixe em branco para selecionar existente)')
+    if novo_fornecedor:
+        if novo_fornecedor not in st.session_state['fornecedores']:
+            st.session_state['fornecedores'].append(novo_fornecedor)
+            st.success(f'Fornecedor {novo_fornecedor} adicionado!')
+        fornecedor = novo_fornecedor
+    else:
+        fornecedor = st.selectbox('Selecione o Fornecedor', st.session_state['fornecedores'])
+    
     data = st.date_input('Data')
     km = st.number_input('Quilometragem', min_value=0)
 
-    # Número da nota
     if not st.session_state['nota_atual']['numero_nota']:
         st.session_state['nota_atual']['numero_nota'] = st.text_input('Número da Nota')
     else:
         st.text(f"Número da Nota: {st.session_state['nota_atual']['numero_nota']}")
 
-    # Formulário para adicionar itens à nota
     with st.form(key='registro_item_form'):
         col1, col2 = st.columns(2)
         with col1:
@@ -449,7 +371,6 @@ def registrar_nota(sheet):
             peca = st.selectbox('Escolha uma peça', st.session_state['pecas'])
             quantidade = st.number_input('Quantidade', min_value=1, value=1)
         
-        # Criando três colunas para centralizar o campo de valor
         col_left, col_center, col_right = st.columns([1, 2, 1])
         with col_center:
             valor = st.number_input('Valor do Item', min_value=0.0)
@@ -473,11 +394,9 @@ def registrar_nota(sheet):
                 'observacoes': observacoes
             }
             st.session_state['nota_atual']['itens'].append(novo_item)
-            add_record_sqlite(**novo_item)
             adicionar_registro(sheet, novo_item)
             st.success('Item adicionado à nota com sucesso!')
 
-    # Exibir itens da nota atual
     if st.session_state['nota_atual']['itens']:
         st.subheader("Itens na nota atual:")
         for idx, item in enumerate(st.session_state['nota_atual']['itens'], 1):
@@ -494,12 +413,10 @@ def registrar_nota(sheet):
         else:
             st.warning('Não há itens na nota atual para finalizar.')
         
-        st.rerun()  
+        st.rerun()
 
-# Função para adicionar novo registro à planilha
 def adicionar_registro(sheet, registro):
     try:
-        # Converter o dicionário em uma lista de valores na ordem correta
         valores = [
             registro['data'],
             registro['placa'],
@@ -508,10 +425,10 @@ def adicionar_registro(sheet, registro):
             registro['nota'],
             registro['fornecedor'],
             registro['tipo_servico'],
-            registro['peca'],  # Este campo corresponde a 'Item da Nota'
+            registro['peca'],
             registro['valor'],
             registro['quantidade'],
-            registro['peca'],  # Repetindo 'peca' para a coluna 'Peça'
+            registro['peca'],
             registro['observacoes']
         ]
         sheet.append_row(valores)
@@ -524,18 +441,8 @@ st.title('Cadastro de Notas de Serviço para Carros')
 sheet = connect_to_gsheet('Controle_Frota')
 if sheet:
     criar_colunas(sheet)
-    create_sqlite_table()
-    create_carros_table()
-    create_fornecedores_table()
-
-    st.sidebar.header('Menu')
-    opcao = st.sidebar.selectbox('Escolha uma opção', ['Adicionar Carro', 'Adicionar Fornecedor', 'Registrar Nota'])
-
-    if opcao == 'Adicionar Carro':
-        adicionar_carro()
-    elif opcao == 'Adicionar Fornecedor':
-        adicionar_fornecedor()
-    elif opcao == 'Registrar Nota':
-        registrar_nota(sheet)
+    registrar_nota(sheet)
 else:
     st.error('Não foi possível conectar à planilha. Verifique suas credenciais e tente novamente.')
+
+

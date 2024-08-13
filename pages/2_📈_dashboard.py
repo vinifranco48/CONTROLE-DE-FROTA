@@ -50,17 +50,14 @@ def process_data(data):
     return df
 
 def create_dashboard(df):
-    # Gráfico de gastos por mês
     gastos_por_mes = df.groupby(df['Data'].dt.to_period('M'))['Valor'].sum().reset_index()
     gastos_por_mes['Data'] = gastos_por_mes['Data'].dt.to_timestamp()
     fig1 = px.line(gastos_por_mes, x='Data', y='Valor', title='Gastos por Mês')
     fig1.update_layout(xaxis_title='Mês', yaxis_title='Valor Total (R$)')
 
-    # Gráfico de gastos por tipo de serviço
     gastos_por_servico = df.groupby('Tipo de Serviço')['Valor'].sum().reset_index()
     fig2 = px.pie(gastos_por_servico, values='Valor', names='Tipo de Serviço', title='Gastos por Tipo de Serviço')
 
-    # Gráfico de gastos por carro
     gastos_por_carro = df.groupby('Placa')['Valor'].sum().reset_index()
     fig3 = px.bar(gastos_por_carro, x='Placa', y='Valor', title='Gastos por Carro')
     fig3.update_layout(xaxis_title='Placa do Veículo', yaxis_title='Valor Total (R$)')
@@ -79,6 +76,9 @@ def show_dashboard():
         data = get_sheet_data(sheet)
         df = process_data(data)
 
+        # Contagem de notas únicas
+        num_notas = df['Nota'].nunique()
+
         fig1, fig2, fig3, fig4 = create_dashboard(df)
 
         st.plotly_chart(fig1, use_container_width=True)
@@ -93,15 +93,15 @@ def show_dashboard():
             total_gasto = (df['Valor'] * df['Quantidade']).sum()
             st.metric("Total gasto", f"R$ {total_gasto:.2f}")
         with col2:
-            st.metric("Número de serviços", f"{len(df)}")
+            st.metric("Número de notas", f"{num_notas}")
         with col3:
-            gasto_medio = total_gasto / len(df) if len(df) > 0 else 0
-            st.metric("Gasto médio por serviço", f"R$ {gasto_medio:.2f}")
+            gasto_medio = total_gasto / num_notas if num_notas > 0 else 0
+            st.metric("Gasto médio por nota", f"R$ {gasto_medio:.2f}")
 
-        # Top 5 serviços mais caros
-        st.subheader('Top 5 Serviços Mais Caros')
-        top_5_servicos = df.nlargest(5, 'Valor')[['Data', 'Placa', 'Tipo de Serviço', 'Valor']]
-        st.table(top_5_servicos)
+        # Top 5 notas mais caras
+        st.subheader('Top 5 Notas Mais Caras')
+        top_5_notas = df.groupby('Nota').agg({'Valor': 'sum'}).nlargest(5, 'Valor').reset_index()
+        st.table(top_5_notas)
 
         # Filtros interativos
         st.subheader('Filtros')
