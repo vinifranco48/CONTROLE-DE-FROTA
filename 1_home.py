@@ -61,8 +61,7 @@ if 'carros' not in st.session_state:
         {'placa': 'PTS8I32', 'modelo': 'S10'},
         {'placa': 'ROC0A68', 'modelo': 'SAVEIRO'},
         {'placa': 'SNJ8I23', 'modelo': 'FIAT TORO'},
-        {'placa': 'SMP1C48', 'modelo': 'CAMINHÃO SPRINTER'},
-        {'placa': 'PTC1086', 'modelo': 'F-350'}
+        {'placa': 'SMP1C48', 'modelo': 'CAMINHÃO SPRINTER'}
     ]
 
 if 'fornecedores' not in st.session_state:
