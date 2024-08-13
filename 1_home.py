@@ -213,7 +213,9 @@ if 'pecas' not in st.session_state:
 'Wastegate',
 'Abraçadeira plastica',
 'Filtro separador agua',
-'Filtro ar motor'
+'Filtro ar motor', 
+'nenhum',
+'óleo'
 ]
 
 if 'servico' not in st.session_state:
@@ -316,7 +318,8 @@ if 'servico' not in st.session_state:
 'Reparo de motor de partida',
 'Revisão do sistema de aquecimento dos bancos',
 'Revisão do sistema de teto solar',
-'Substituição de sensores de estacionamento'
+'Substituição de sensores de estacionamento',
+'Nenhum'
 ]
 if 'nota_atual' not in st.session_state:
     st.session_state['nota_atual'] = None  # Inicializar o número da nota atual
