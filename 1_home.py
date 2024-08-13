@@ -4,7 +4,7 @@ import pandas as pd
 from google.oauth2.service_account import Credentials
 import gspread
 import os
-
+from datetime import datetime
 # Defina suas credenciais do Google Sheets
 GOOGLE_PROJECT_ID = "atualizardados"
 GOOGLE_PRIVATE_KEY_ID = "16c09e59f7872364ef46d71f09a2fe614438599f"
@@ -41,6 +41,7 @@ def connect_to_gsheet(sheet_name):
         st.error(f"Erro ao acessar a planilha: {e}")
         return None
 
+# Criar colunas no Google Sheets
 def criar_colunas(sheet):
     colunas = [
         'Data', 'Placa', 'Modelo', 'KM', 'Nota', 'Fornecedor', 'Tipo de Serviço', 'Item da Nota', 'Valor', 'Quantidade', 'Peça', 'Observações'
@@ -66,6 +67,7 @@ if 'carros' not in st.session_state:
 
 if 'fornecedores' not in st.session_state:
     st.session_state['fornecedores'] = []
+
 
 if 'pecas' not in st.session_state:
     st.session_state['pecas'] = ["Adesivos", "Aerofólio", "Airbag", "Alavanca de câmbio", "Alternador", "Amortecedor de direção", "Amortecedor dianteiro", "Amortecedor traseiro", "Amortecedores", "Amortecedores de capô", "Amortecedores de porta-malas", "Anéis de pistão", "Anéis de vedação", "Anel de vedação", "Antena", "Atuador da marcha lenta", "Atuador de ABS", "Atuador de corpo de borboleta", "Atuador de marcha lenta", "Bandejas de suspensão", "Barra de direção", "Barra estabilizadora", "Barras de torção", "Batentes", "Bateria", "Bico injetor", "Bicos injetores", "Bielas", "Bloco do motor", "Bobina de ignição", "Bomba d'água", "Bomba de ABS", "Bomba de alta pressão de combustível", "Bomba de combustível", "Bomba de combustível elétrica", "Bomba de direção hidráulica", "Bomba de óleo", "Bomba de vácuo", "Borrachas de vedação", "Botão do vidro elétrico", "Braço oscilante", "Braços de direção", "Bucha de bandeja", "Buchas", "Buchas de suspensão", "Buzina", "Cabeçote", "Cabo de ignição", "Cabo de vela", "Cabo do acelerador", "Cabos de velas", "Caixa de direção", "Caixa de fusíveis", "Caixa de transferência", "Câmbio (transmissão manual ou automática)", "Capô", "Cardan", "Carter", "Cárter do óleo", "Catalisador", "Central de ABS", "Central de alarme", "Central de injeção eletrônica", "Centralina (ECU)", "Centralina eletrônica", "Chave de ignição", "Chave de roda", "Chicote elétrico", "Cilindro mestre de freio", "Cilindros de roda", "Cinto de segurança", "Coletor de admissão", "Coletor de escape", "Coluna de direção", "Compressor de ar-condicionado", "Condensador de ar-condicionado", "Conjunto de cabeçote", "Conjunto de embreagem do ar-condicionado", "Conjunto de motor", "Conjunto de válvulas", "Corpo de borboleta", "Correia dentada", "Correias auxiliares", "Corrente de distribuição", "Coxins da suspensão", "Coxins do motor", "Diferencial", "Disco de embreagem", "Discos de freio", "Distribuidor", "EGR (Exhaust Gas Recirculation)", "Eixo cardan", "Eixo de comando", "Eixo de transmissão", "Eixo dianteiro", "Eixo piloto", "Eixo traseiro", "Eletroventilador", "Emblemas", "Embreagem", "Embreagem de ventilador", "Embreagem do ventilador", "Espelho retrovisor interno", "Espelhos de cortes", "Espelhos retrovisores", "Estepe", "Evaporador de ar-condicionado", "Extintor de incêndio", "Faróis", "Faróis de neblina", "Fechaduras", "Filtro de ar", "Filtro de ar-condicionado", "Filtro de cabine", "Filtro de cabine (ar-condicionado)", "Filtro de combustível", "Filtro de óleo", "Filtro secador", "Flanges", "Fluido de freio", "Forros de porta", "Freio de mão", "Fusíveis", "Fusível térmico", "Grade do para-choque", "Grade frontal", "Hidrovácuo", "Injetor de combustível", "Injetores de combustível", "Intercooler", "Interruptor de ignição", "Interruptor de luz de freio", "Interruptor de ré", "Interruptor de temperatura", "Interruptores", "Jogo de juntas", "Junta da tampa de válvulas", "Junta de cabeçote", "Junta de cárter", "Junta de vedação", "Juntas homocinéticas", "Juntas universais", "Kit de embreagem", "Kit de juntas", "Kit de juntas de motor", "Kit de vedação", "Lanternas de posição", "Lanternas traseiras", "Luz de placa", "Luzes de freio", "Luzes de ré", "Luzes indicadoras de direção", "Luzes internas", "Macaco", "Mangueira de radiador", "Mangueiras", "Mangueiras de direção hidráulica", "Mangueiras de freio", "Mangueiras de radiador", "Mangueiras de vácuo", "Módulo de ABS", "Módulo de controle de tração", "Módulo de ignição", "Módulo de injeção eletrônica", "Mola de suspensão", "Molas", "Molas helicoidais", "Molduras externas", "Motor", "Motor de arranque", "Motor do vidro elétrico", "Motores do limpador de para-brisa", "Painel de instrumentos", "Palhetas do limpador de para-brisa", "Para-barros", "Para-brisa", "Para-choques", "Parafuso de dreno do óleo", "Parafusos", "Parafusos de roda", "Pastilhas de freio Traseira", "Pastilhas de freio Dianteira", 'Pedal de embreagem',
@@ -338,23 +340,33 @@ if 'macro' not in st.session_state:
 
     ]
 
+# Recuperar fornecedores da planilha
+def recuperar_fornecedores(sheet):
+    try:
+        fornecedores = sheet.col_values(6)[1:]  # Coluna "Fornecedor", ignorando o cabeçalho
+        st.session_state['fornecedores'] = list(set(fornecedores))  # Remover duplicatas
+    except Exception as e:
+        st.error(f"Erro ao recuperar fornecedores: {e}")
+
+# Registrar uma nova nota
 def registrar_nota(sheet):
     if 'nota_atual' not in st.session_state or st.session_state['nota_atual'] is None:
         st.session_state['nota_atual'] = {'numero_nota': '', 'itens': []}
 
     placa_carro = st.selectbox('Selecione a Placa do Carro', [carro['placa'] for carro in st.session_state['carros']])
     modelo_carro = next(carro['modelo'] for carro in st.session_state['carros'] if carro['placa'] == placa_carro)
-    
-    novo_fornecedor = st.text_input('Novo Fornecedor (deixe em branco para selecionar existente)')
+
+    novo_fornecedor = st.text_input('Novo Fornecedor')
     if novo_fornecedor:
         if novo_fornecedor not in st.session_state['fornecedores']:
             st.session_state['fornecedores'].append(novo_fornecedor)
+            sheet.append_row([novo_fornecedor], table_range='F2')  # Salvar o novo fornecedor na planilha
             st.success(f'Fornecedor {novo_fornecedor} adicionado!')
         fornecedor = novo_fornecedor
     else:
         fornecedor = st.selectbox('Selecione o Fornecedor', st.session_state['fornecedores'])
-    
-    data = st.date_input('Data')
+
+    data = st.date_input('Data', value=datetime.now())
     km = st.number_input('Quilometragem', min_value=0)
 
     if not st.session_state['nota_atual']['numero_nota']:
@@ -370,13 +382,13 @@ def registrar_nota(sheet):
         with col2:
             peca = st.selectbox('Escolha uma peça', st.session_state['pecas'])
             quantidade = st.number_input('Quantidade', min_value=1, value=1)
-        
+
         col_left, col_center, col_right = st.columns([1, 2, 1])
         with col_center:
             valor = st.number_input('Valor do Item', min_value=0.0)
-    
+
         observacoes = st.text_area('Observações')
-        
+
         adicionar_item_button = st.form_submit_button('Adicionar Item à Nota')
 
         if adicionar_item_button:
@@ -407,12 +419,12 @@ def registrar_nota(sheet):
             st.subheader('Resumo da Nota')
             total = sum(item['quantidade'] * item['valor'] for item in st.session_state['nota_atual']['itens'])
             st.write(f"Total da Nota: R$ {total:.2f}")
-            
+
             st.session_state['nota_atual'] = {'numero_nota': '', 'itens': []}
             st.success('Nota finalizada!')
         else:
             st.warning('Não há itens na nota atual para finalizar.')
-        
+
         st.rerun()
 
 def adicionar_registro(sheet, registro):
@@ -441,8 +453,8 @@ st.title('Cadastro de Notas de Serviço para Carros')
 sheet = connect_to_gsheet('Controle_Frota')
 if sheet:
     criar_colunas(sheet)
+    recuperar_fornecedores(sheet)  # Recuperar fornecedores na inicialização
     registrar_nota(sheet)
 else:
     st.error('Não foi possível conectar à planilha. Verifique suas credenciais e tente novamente.')
-
 
