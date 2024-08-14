@@ -50,6 +50,37 @@ def criar_colunas(sheet):
     if not existing_headers or set(colunas) != set(existing_headers):
         sheet.insert_row(colunas, 1)
         st.success('Cabeçalhos criados na planilha!')
+        
+def recuperar_fornecedores(sheet):
+    try:
+        fornecedores = sheet.col_values(6)[1:]  # Coluna "Fornecedor", ignorando o cabeçalho
+        st.session_state['fornecedores'] = list(set(fornecedores))  # Remover duplicatas
+    except Exception as e:
+        st.error(f"Erro ao recuperar fornecedores: {e}")
+
+def atualizar_fornecedores(sheet, novos_fornecedores):
+    try:
+        existing_fornecedores = set(sheet.col_values(6)[1:])
+        for fornecedor in novos_fornecedores:
+            if fornecedor not in existing_fornecedores:
+                sheet.append_row([''] * 5 + [fornecedor] + [''] * 6, table_range='A2')
+        st.success('Fornecedores atualizados na planilha!')
+    except Exception as e:
+        st.error(f"Erro ao atualizar fornecedores: {e}")
+
+# Inicializar dados em cache
+if 'carros' not in st.session_state:
+    st.session_state['carros'] = [
+        {'placa': 'PSK9760', 'modelo': 'S10 ESTREITO'},
+        {'placa': 'PTA8229', 'modelo': 'S10'},
+        {'placa': 'PTP4215', 'modelo': 'CAMINHÃO VOLVO'},
+        {'placa': 'PTQ9932', 'modelo': 'HILUX'},
+        {'placa': 'PTS8I32', 'modelo': 'S10'},
+        {'placa': 'ROC0A68', 'modelo': 'SAVEIRO'},
+        {'placa': 'SNJ8I23', 'modelo': 'FIAT TORO'},
+        {'placa': 'SMP1C48', 'modelo': 'CAMINHÃO SPRINTER'}
+    ]
+
 
 # Inicializar dados em cache
 if 'carros' not in st.session_state:
@@ -346,15 +377,7 @@ if 'macro' not in st.session_state:
 
     ]
 
-def recuperar_fornecedores(sheet):
-    try:
-        fornecedores = sheet.col_values(6)[1:]
-        st.session_state['fornecedores'] = list(set(fornecedores))
-    except Exception as e:
-        st.error(f"Erro ao recuperar fornecedores: {e}")
-
 def registrar_nota(sheet):
-    # Verifica se a nota_atual existe e não é None
     if 'nota_atual' not in st.session_state or st.session_state['nota_atual'] is None:
         st.session_state['nota_atual'] = {'numero_nota': '', 'itens': []}
 
@@ -375,14 +398,7 @@ def registrar_nota(sheet):
                 st.text(f"Número da Nota: {st.session_state['nota_atual']['numero_nota']}")
         
         with col2:
-            fornecedor = st.selectbox('Fornecedor', st.session_state['fornecedores'] + ['Adicionar Novo'])
-            if fornecedor == 'Adicionar Novo':
-                novo_fornecedor = st.text_input('Novo Fornecedor')
-                if novo_fornecedor and st.form_submit_button('Adicionar Fornecedor'):
-                    if novo_fornecedor not in st.session_state['fornecedores']:
-                        st.session_state['fornecedores'].append(novo_fornecedor)
-                        fornecedor = novo_fornecedor
-
+            fornecedor = st.selectbox('Fornecedor', options=st.session_state['fornecedores'])
             km = st.number_input('Quilometragem', min_value=0)
         
         st.markdown("---")
@@ -409,7 +425,9 @@ def registrar_nota(sheet):
 
         with col3:
             valor = st.number_input('Valor do Item', min_value=0.0)
-            observacoes = st.text_area('Observações')
+
+        st.markdown("---")
+        observacoes = st.text_area('Observações', height=150)
 
         adicionar_item_button = st.form_submit_button('Adicionar Item à Nota')
 
@@ -443,15 +461,15 @@ def registrar_nota(sheet):
             st.success("Nota registrada com sucesso!")
             st.session_state['nota_atual'] = None
 
-    # Exibir itens adicionados apenas se st.session_state['nota_atual'] não for None
     if st.session_state['nota_atual'] and st.session_state['nota_atual']['itens']:
         st.subheader("Itens Adicionados")
         for item in st.session_state['nota_atual']['itens']:
             st.write(f"Serviço: {item['servico']}, Peça: {item['peca']}, Quantidade: {item['quantidade']}, Valor: {item['valor']}, Observações: {item['observacoes']}")
+
 def adicionar_registro(sheet, registro):
     try:
         valores = [
-            registro['data'].strftime('%Y-%m-%d'),  # Formatar a data corretamente
+            registro['data'].strftime('%Y-%m-%d'),
             registro['placa'],
             registro['modelo'],
             registro['km'],
@@ -461,7 +479,7 @@ def adicionar_registro(sheet, registro):
             registro['peca'],
             registro['valor'],
             registro['quantidade'],
-            registro['peca'],  # Aparentemente, o campo "Peça" está repetido, mas pode ser um erro
+            registro['peca'],
             registro['observacoes']
         ]
         sheet.append_row(valores)
@@ -474,6 +492,14 @@ sheet = connect_to_gsheet('Controle_Frota')
 if sheet:
     criar_colunas(sheet)
     recuperar_fornecedores(sheet)
+    
+    if st.button('Atualizar Lista de Fornecedores'):
+        novos_fornecedores = st.text_area('Digite os novos fornecedores (um por linha):').split('\n')
+        novos_fornecedores = [f.strip() for f in novos_fornecedores if f.strip()]
+        if novos_fornecedores:
+            atualizar_fornecedores(sheet, novos_fornecedores)
+            recuperar_fornecedores(sheet)
+    
     registrar_nota(sheet)
 else:
     st.error('Não foi possível conectar à planilha. Verifique suas credenciais e tente novamente.')
