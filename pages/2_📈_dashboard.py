@@ -43,7 +43,11 @@ def get_sheet_data(sheet):
     return sheet.get_all_records()
 
 def process_data(data):
+    if not data:
+        return None
     df = pd.DataFrame(data)
+    if df.empty:
+        return None
     df['Data'] = pd.to_datetime(df['Data'])
     df['Valor'] = pd.to_numeric(df['Valor'])
     df['Quantidade'] = pd.to_numeric(df['Quantidade'])
@@ -62,7 +66,6 @@ def create_dashboard(df):
     fig3 = px.bar(gastos_por_carro, x='Placa', y='Valor', title='Gastos por Carro')
     fig3.update_layout(xaxis_title='Placa do Veículo', yaxis_title='Valor Total (R$)')
 
-    # Gráfico de distribuição de gastos
     fig4 = px.box(df, y='Valor', title='Distribuição dos Gastos')
     fig4.update_layout(yaxis_title='Valor (R$)')
 
@@ -75,6 +78,10 @@ def show_dashboard():
     if sheet:
         data = get_sheet_data(sheet)
         df = process_data(data)
+
+        if df is None or df.empty:
+            st.warning("Não há dados disponíveis na planilha. Por favor, verifique se a planilha contém informações.")
+            return
 
         # Contagem de notas únicas
         num_notas = df['Nota'].nunique()
