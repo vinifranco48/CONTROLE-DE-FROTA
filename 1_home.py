@@ -64,6 +64,7 @@ if 'carros' not in st.session_state:
         {'placa': 'SMP1C48', 'modelo': 'CAMINHÃO SPRINTER'}
     ]
 
+
 if 'fornecedores' not in st.session_state:
     st.session_state['fornecedores'] = []
 
@@ -215,7 +216,8 @@ if 'pecas' not in st.session_state:
 'Filtro ar motor', 
 'nenhum',
 'óleo',
-'estopa'
+'estopa',
+'Outro'
 ]
 
 if 'servico' not in st.session_state:
@@ -319,7 +321,8 @@ if 'servico' not in st.session_state:
 'Revisão do sistema de aquecimento dos bancos',
 'Revisão do sistema de teto solar',
 'Substituição de sensores de estacionamento',
-'Nenhum'
+'Nenhum',
+'Outro'
 ]
 if 'nota_atual' not in st.session_state:
     st.session_state['nota_atual'] = None  # Inicializar o número da nota atual
@@ -343,97 +346,112 @@ if 'macro' not in st.session_state:
 
     ]
 
-# Recuperar fornecedores da planilha
 def recuperar_fornecedores(sheet):
     try:
-        fornecedores = sheet.col_values(6)[1:]  # Coluna "Fornecedor", ignorando o cabeçalho
-        st.session_state['fornecedores'] = list(set(fornecedores))  # Remover duplicatas
+        fornecedores = sheet.col_values(6)[1:]
+        st.session_state['fornecedores'] = list(set(fornecedores))
     except Exception as e:
         st.error(f"Erro ao recuperar fornecedores: {e}")
 
-# Registrar uma nova nota
 def registrar_nota(sheet):
+    # Verifica se a nota_atual existe e não é None
     if 'nota_atual' not in st.session_state or st.session_state['nota_atual'] is None:
         st.session_state['nota_atual'] = {'numero_nota': '', 'itens': []}
 
-    placa_carro = st.selectbox('Selecione a Placa do Carro', [carro['placa'] for carro in st.session_state['carros']])
-    modelo_carro = next(carro['modelo'] for carro in st.session_state['carros'] if carro['placa'] == placa_carro)
+    st.header("Registrar Nota")
 
-    novo_fornecedor = st.text_input('Novo Fornecedor')
-    if novo_fornecedor:
-        if novo_fornecedor not in st.session_state['fornecedores']:
-            st.session_state['fornecedores'].append(novo_fornecedor)
-            sheet.append_row([novo_fornecedor], table_range='F2')  # Salvar o novo fornecedor na planilha
-            st.success(f'Fornecedor {novo_fornecedor} adicionado!')
-        fornecedor = novo_fornecedor
-    else:
-        fornecedor = st.selectbox('Selecione o Fornecedor', st.session_state['fornecedores'])
-
-    data = st.date_input('Data', value=datetime.now())
-    km = st.number_input('Quilometragem', min_value=0)
-
-    if not st.session_state['nota_atual']['numero_nota']:
-        st.session_state['nota_atual']['numero_nota'] = st.text_input('Número da Nota')
-    else:
-        st.text(f"Número da Nota: {st.session_state['nota_atual']['numero_nota']}")
-
-    with st.form(key='registro_item_form'):
+    with st.form(key='nota_form'):
         col1, col2 = st.columns(2)
+        
         with col1:
-            macro = st.selectbox("Escolha macro", st.session_state['macro'])
-            servico = st.selectbox('Escolha o Serviço', st.session_state['servico'])
+            placa_carro = st.selectbox('Placa do Carro', [carro['placa'] for carro in st.session_state['carros']])
+            modelo_carro = next(carro['modelo'] for carro in st.session_state['carros'] if carro['placa'] == placa_carro)
+            
+            data = st.date_input('Data', value=datetime.now())
+            
+            if not st.session_state['nota_atual']['numero_nota']:
+                st.session_state['nota_atual']['numero_nota'] = st.text_input('Número da Nota')
+            else:
+                st.text(f"Número da Nota: {st.session_state['nota_atual']['numero_nota']}")
+        
         with col2:
-            peca = st.selectbox('Escolha uma peça', st.session_state['pecas'])
+            fornecedor = st.selectbox('Fornecedor', st.session_state['fornecedores'] + ['Adicionar Novo'])
+            if fornecedor == 'Adicionar Novo':
+                novo_fornecedor = st.text_input('Novo Fornecedor')
+                if novo_fornecedor and st.form_submit_button('Adicionar Fornecedor'):
+                    if novo_fornecedor not in st.session_state['fornecedores']:
+                        st.session_state['fornecedores'].append(novo_fornecedor)
+                        fornecedor = novo_fornecedor
+
+            km = st.number_input('Quilometragem', min_value=0)
+        
+        st.markdown("---")
+
+        st.subheader("Adicionar Itens")
+
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            macro = st.selectbox("Tipo de Serviço", st.session_state['macro'])
+            servico = st.selectbox('Serviço', st.session_state['servico'])
+            novo_servico = st.text_input('Adicionar Novo Serviço')
+            if novo_servico:
+                st.session_state['servico'].append(novo_servico)
+                servico = novo_servico
+
+        with col2:
+            peca = st.selectbox('Peça', st.session_state['pecas'])
+            nova_peca = st.text_input('Adicionar Nova Peça')
+            if nova_peca:
+                st.session_state['pecas'].append(nova_peca)
+                peca = nova_peca
             quantidade = st.number_input('Quantidade', min_value=1, value=1)
 
-        col_left, col_center, col_right = st.columns([1, 2, 1])
-        with col_center:
+        with col3:
             valor = st.number_input('Valor do Item', min_value=0.0)
-
-        observacoes = st.text_area('Observações')
+            observacoes = st.text_area('Observações')
 
         adicionar_item_button = st.form_submit_button('Adicionar Item à Nota')
 
         if adicionar_item_button:
-            novo_item = {
-                'data': data.strftime('%Y-%m-%d'),
-                'placa': placa_carro,
-                'modelo': modelo_carro,
-                'km': km,
-                'nota': st.session_state['nota_atual']['numero_nota'],
-                'fornecedor': fornecedor,
-                'tipo_servico': macro,
+            st.session_state['nota_atual']['itens'].append({
+                'servico': servico,
                 'peca': peca,
                 'quantidade': quantidade,
                 'valor': valor,
                 'observacoes': observacoes
-            }
-            st.session_state['nota_atual']['itens'].append(novo_item)
-            adicionar_registro(sheet, novo_item)
-            st.success('Item adicionado à nota com sucesso!')
+            })
+            st.success('Item adicionado à nota!')
 
-    if st.session_state['nota_atual']['itens']:
-        st.subheader("Itens na nota atual:")
-        for idx, item in enumerate(st.session_state['nota_atual']['itens'], 1):
-            st.text(f"{idx}. {item['peca']} - Quantidade: {item['quantidade']} - Valor: R${item['valor']:.2f}")
+        finalizar_nota_button = st.form_submit_button('Finalizar Nota')
 
-    if st.button('Finalizar Nota'):
-        if st.session_state['nota_atual']['itens']:
-            st.subheader('Resumo da Nota')
-            total = sum(item['quantidade'] * item['valor'] for item in st.session_state['nota_atual']['itens'])
-            st.write(f"Total da Nota: R$ {total:.2f}")
+        if finalizar_nota_button:
+            for item in st.session_state['nota_atual']['itens']:
+                adicionar_registro(sheet, {
+                    'data': data,
+                    'placa': placa_carro,
+                    'modelo': modelo_carro,
+                    'km': km,
+                    'nota': st.session_state['nota_atual']['numero_nota'],
+                    'fornecedor': fornecedor,
+                    'tipo_servico': item['servico'],
+                    'peca': item['peca'],
+                    'valor': item['valor'],
+                    'quantidade': item['quantidade'],
+                    'observacoes': item['observacoes']
+                })
+            st.success("Nota registrada com sucesso!")
+            st.session_state['nota_atual'] = None
 
-            st.session_state['nota_atual'] = {'numero_nota': '', 'itens': []}
-            st.success('Nota finalizada!')
-        else:
-            st.warning('Não há itens na nota atual para finalizar.')
-
-        st.rerun()
-
+    # Exibir itens adicionados apenas se st.session_state['nota_atual'] não for None
+    if st.session_state['nota_atual'] and st.session_state['nota_atual']['itens']:
+        st.subheader("Itens Adicionados")
+        for item in st.session_state['nota_atual']['itens']:
+            st.write(f"Serviço: {item['servico']}, Peça: {item['peca']}, Quantidade: {item['quantidade']}, Valor: {item['valor']}, Observações: {item['observacoes']}")
 def adicionar_registro(sheet, registro):
     try:
         valores = [
-            registro['data'],
+            registro['data'].strftime('%Y-%m-%d'),  # Formatar a data corretamente
             registro['placa'],
             registro['modelo'],
             registro['km'],
@@ -443,21 +461,19 @@ def adicionar_registro(sheet, registro):
             registro['peca'],
             registro['valor'],
             registro['quantidade'],
-            registro['peca'],
+            registro['peca'],  # Aparentemente, o campo "Peça" está repetido, mas pode ser um erro
             registro['observacoes']
         ]
         sheet.append_row(valores)
     except Exception as e:
         st.error(f"Erro ao adicionar registro na planilha: {e}")
 
-# Interface do app
 st.title('Cadastro de Notas de Serviço para Carros')
 
 sheet = connect_to_gsheet('Controle_Frota')
 if sheet:
     criar_colunas(sheet)
-    recuperar_fornecedores(sheet)  # Recuperar fornecedores na inicialização
+    recuperar_fornecedores(sheet)
     registrar_nota(sheet)
 else:
     st.error('Não foi possível conectar à planilha. Verifique suas credenciais e tente novamente.')
-
