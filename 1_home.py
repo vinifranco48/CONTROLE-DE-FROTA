@@ -41,7 +41,6 @@ def connect_to_gsheet(sheet_name):
         st.error(f"Erro ao acessar a planilha: {e}")
         return None
 
-# Criar colunas no Google Sheets
 def criar_colunas(sheet):
     colunas = [
         'Data', 'Placa', 'Modelo', 'KM', 'Nota', 'Fornecedor', 'Tipo de Serviço', 'Item da Nota', 'Valor', 'Quantidade', 'Peça', 'Observações'
@@ -50,7 +49,7 @@ def criar_colunas(sheet):
     if not existing_headers or set(colunas) != set(existing_headers):
         sheet.insert_row(colunas, 1)
         st.success('Cabeçalhos criados na planilha!')
-        
+
 def recuperar_fornecedores(sheet):
     try:
         fornecedores = sheet.col_values(6)[1:]  # Coluna "Fornecedor", ignorando o cabeçalho
@@ -69,31 +68,18 @@ def atualizar_fornecedores(sheet, novos_fornecedores):
         st.error(f"Erro ao atualizar fornecedores: {e}")
 
 # Inicializar dados em cache
-if 'carros' not in st.session_state:
-    st.session_state['carros'] = [
-        {'placa': 'PSK9760', 'modelo': 'S10 ESTREITO'},
-        {'placa': 'PTA8229', 'modelo': 'S10'},
-        {'placa': 'PTP4215', 'modelo': 'CAMINHÃO VOLVO'},
-        {'placa': 'PTQ9932', 'modelo': 'HILUX'},
-        {'placa': 'PTS8I32', 'modelo': 'S10'},
-        {'placa': 'ROC0A68', 'modelo': 'SAVEIRO'},
-        {'placa': 'SNJ8I23', 'modelo': 'FIAT TORO'},
-        {'placa': 'SMP1C48', 'modelo': 'CAMINHÃO SPRINTER'}
-    ]
-
-
-# Inicializar dados em cache
-if 'carros' not in st.session_state:
-    st.session_state['carros'] = [
-        {'placa': 'PSK9760', 'modelo': 'S10 ESTREITO'},
-        {'placa': 'PTA8229', 'modelo': 'S10'},
-        {'placa': 'PTP4215', 'modelo': 'CAMINHÃO VOLVO'},
-        {'placa': 'PTQ9932', 'modelo': 'HILUX'},
-        {'placa': 'PTS8I32', 'modelo': 'S10'},
-        {'placa': 'ROC0A68', 'modelo': 'SAVEIRO'},
-        {'placa': 'SNJ8I23', 'modelo': 'FIAT TORO'},
-        {'placa': 'SMP1C48', 'modelo': 'CAMINHÃO SPRINTER'}
-    ]
+def initialize_session_state():
+    if 'carros' not in st.session_state:
+        st.session_state['carros'] = [
+            {'placa': 'PSK9760', 'modelo': 'S10 ESTREITO'},
+            {'placa': 'PTA8229', 'modelo': 'S10'},
+            {'placa': 'PTP4215', 'modelo': 'CAMINHÃO VOLVO'},
+            {'placa': 'PTQ9932', 'modelo': 'HILUX'},
+            {'placa': 'PTS8I32', 'modelo': 'S10'},
+            {'placa': 'ROC0A68', 'modelo': 'SAVEIRO'},
+            {'placa': 'SNJ8I23', 'modelo': 'FIAT TORO'},
+            {'placa': 'SMP1C48', 'modelo': 'CAMINHÃO SPRINTER'}
+        ]
 
 
 if 'fornecedores' not in st.session_state:
@@ -277,7 +263,7 @@ if 'servico' not in st.session_state:
 'Revisão do sistema de escapamento',
 'Limpeza dos bicos injetores',
 'Troca do líquido de arrefecimento',
-'Verificação da bomba d’água',
+'Verificação da bomba dágua',
 'Troca de junta do cabeçote',
 'Calibração dos pneus',
 'Descarbonização do motor',
@@ -411,28 +397,30 @@ def registrar_nota(sheet):
             macro = st.selectbox("Tipo de Serviço", st.session_state['macro'])
             servico = st.selectbox('Serviço', st.session_state['servico'])
             novo_servico = st.text_input('Adicionar Novo Serviço')
-            if novo_servico:
+            if novo_servico and novo_servico not in st.session_state['servico']:
                 st.session_state['servico'].append(novo_servico)
                 servico = novo_servico
 
         with col2:
             peca = st.selectbox('Peça', st.session_state['pecas'])
             nova_peca = st.text_input('Adicionar Nova Peça')
-            if nova_peca:
+            if nova_peca and nova_peca not in st.session_state['pecas']:
                 st.session_state['pecas'].append(nova_peca)
                 peca = nova_peca
             quantidade = st.number_input('Quantidade', min_value=1, value=1)
 
         with col3:
-            valor = st.number_input('Valor do Item', min_value=0.0)
+            valor = st.number_input('Valor do Item', min_value=0.0, format="%.2f")
 
         st.markdown("---")
         observacoes = st.text_area('Observações', height=150)
 
         adicionar_item_button = st.form_submit_button('Adicionar Item à Nota')
+        finalizar_nota_button = st.form_submit_button('Finalizar Nota')
 
         if adicionar_item_button:
             st.session_state['nota_atual']['itens'].append({
+                'tipo_servico': macro,
                 'servico': servico,
                 'peca': peca,
                 'quantidade': quantidade,
@@ -440,8 +428,6 @@ def registrar_nota(sheet):
                 'observacoes': observacoes
             })
             st.success('Item adicionado à nota!')
-
-        finalizar_nota_button = st.form_submit_button('Finalizar Nota')
 
         if finalizar_nota_button:
             for item in st.session_state['nota_atual']['itens']:
@@ -452,7 +438,8 @@ def registrar_nota(sheet):
                     'km': km,
                     'nota': st.session_state['nota_atual']['numero_nota'],
                     'fornecedor': fornecedor,
-                    'tipo_servico': item['servico'],
+                    'tipo_servico': item['tipo_servico'],
+                    'servico': item['servico'],
                     'peca': item['peca'],
                     'valor': item['valor'],
                     'quantidade': item['quantidade'],
@@ -464,7 +451,7 @@ def registrar_nota(sheet):
     if st.session_state['nota_atual'] and st.session_state['nota_atual']['itens']:
         st.subheader("Itens Adicionados")
         for item in st.session_state['nota_atual']['itens']:
-            st.write(f"Serviço: {item['servico']}, Peça: {item['peca']}, Quantidade: {item['quantidade']}, Valor: {item['valor']}, Observações: {item['observacoes']}")
+            st.write(f"Tipo de Serviço: {item['tipo_servico']}, Serviço: {item['servico']}, Peça: {item['peca']}, Quantidade: {item['quantidade']}")
 
 def adicionar_registro(sheet, registro):
     try:
@@ -476,7 +463,7 @@ def adicionar_registro(sheet, registro):
             registro['nota'],
             registro['fornecedor'],
             registro['tipo_servico'],
-            registro['peca'],
+            registro['servico'],
             registro['valor'],
             registro['quantidade'],
             registro['peca'],
@@ -486,20 +473,26 @@ def adicionar_registro(sheet, registro):
     except Exception as e:
         st.error(f"Erro ao adicionar registro na planilha: {e}")
 
-st.title('Cadastro de Notas de Serviço para Carros')
+def main():
+    st.title('Cadastro de Notas de Serviço para Carros')
 
-sheet = connect_to_gsheet('Controle_Frota')
-if sheet:
-    criar_colunas(sheet)
-    recuperar_fornecedores(sheet)
-    
-    if st.button('Atualizar Lista de Fornecedores'):
-        novos_fornecedores = st.text_area('Digite os novos fornecedores (um por linha):').split('\n')
-        novos_fornecedores = [f.strip() for f in novos_fornecedores if f.strip()]
-        if novos_fornecedores:
-            atualizar_fornecedores(sheet, novos_fornecedores)
-            recuperar_fornecedores(sheet)
-    
-    registrar_nota(sheet)
-else:
-    st.error('Não foi possível conectar à planilha. Verifique suas credenciais e tente novamente.')
+    initialize_session_state()
+
+    sheet = connect_to_gsheet('Controle_Frota')
+    if sheet:
+        criar_colunas(sheet)
+        recuperar_fornecedores(sheet)
+        
+        if st.button('Atualizar Lista de Fornecedores'):
+            novos_fornecedores = st.text_area('Digite os novos fornecedores (um por linha):').split('\n')
+            novos_fornecedores = [f.strip() for f in novos_fornecedores if f.strip()]
+            if novos_fornecedores:
+                atualizar_fornecedores(sheet, novos_fornecedores)
+                recuperar_fornecedores(sheet)
+        
+        registrar_nota(sheet)
+    else:
+        st.error('Não foi possível conectar à planilha. Verifique suas credenciais e tente novamente.')
+
+if __name__ == "__main__":
+    main()
