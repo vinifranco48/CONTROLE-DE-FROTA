@@ -13,6 +13,13 @@ GOOGLE_CLIENT_EMAIL = "atualizar-dados@atualizardados.iam.gserviceaccount.com"
 GOOGLE_CLIENT_ID = "105127364991999381484"
 GOOGLE_CLIENT_CERT_URL = "https://www.googleapis.com/robot/v1/metadata/x509/atualizar-dados%40atualizardados.iam.gserviceaccount.com"
 
+
+st.set_page_config(
+    page_title="Minha Aplicação",  # Título da página
+    page_icon="82e92a11-a5e6-40a1-b14b-079a79528191.jpg",  # Você pode usar um emoji como ícone
+    layout="centered",  # Layout da página (pode ser 'centered' ou 'wide')
+    initial_sidebar_state="auto"  # Estado inicial da barra lateral
+)
 # Função para autenticar e conectar ao Google Sheets
 @st.cache_resource
 def connect_to_gsheet(sheet_name):
