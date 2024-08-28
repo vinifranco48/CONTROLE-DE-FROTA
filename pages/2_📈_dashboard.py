@@ -59,17 +59,18 @@ def create_dashboard(df):
     fig1 = px.line(gastos_por_mes, x='Data', y='Valor', title='Gastos por Mês')
     fig1.update_layout(xaxis_title='Mês', yaxis_title='Valor Total (R$)')
 
-    gastos_por_servico = df.groupby('Tipo de Serviço')['Valor'].sum().reset_index()
-    fig2 = px.pie(gastos_por_servico, values='Valor', names='Tipo de Serviço', title='Gastos por Tipo de Serviço')
+    def create_pie_chart(data, month):
+        gastos_por_servico = data[data['Data'].dt.to_period('M') == month].groupby('Tipo de Serviço')['Valor'].sum().reset_index()
+        return px.pie(gastos_por_servico, values='Valor', names='Tipo de Serviço', title=f'Gastos por Tipo de Serviço - {month}')
 
-    gastos_por_carro = df.groupby('Placa')['Valor'].sum().reset_index()
-    fig3 = px.bar(gastos_por_carro, x='Placa', y='Valor', title='Gastos por Carro')
-    fig3.update_layout(xaxis_title='Placa do Veículo', yaxis_title='Valor Total (R$)')
+    def create_bar_chart(data, month):
+        gastos_por_carro = data[data['Data'].dt.to_period('M') == month].groupby('Placa')['Valor'].sum().reset_index()
+        return px.bar(gastos_por_carro, x='Placa', y='Valor', title=f'Gastos por Carro - {month}')
 
     fig4 = px.box(df, y='Valor', title='Distribuição dos Gastos')
     fig4.update_layout(yaxis_title='Valor (R$)')
 
-    return fig1, fig2, fig3, fig4
+    return fig1, create_pie_chart, create_bar_chart, fig4
 
 def show_dashboard():
     st.title('Dashboard de Gastos com Veículos')
@@ -83,17 +84,23 @@ def show_dashboard():
             st.warning("Não há dados disponíveis na planilha. Por favor, verifique se a planilha contém informações.")
             return
 
-        # Contagem de notas únicas
         num_notas = df['Nota'].nunique()
 
-        fig1, fig2, fig3, fig4 = create_dashboard(df)
+        fig1, create_pie_chart, create_bar_chart, fig4 = create_dashboard(df)
 
         st.plotly_chart(fig1, use_container_width=True)
+
+        months = df['Data'].dt.to_period('M').unique()
+        selected_month = st.selectbox('Selecione o mês para os gráficos de pizza e barras', options=months)
+
+        fig2 = create_pie_chart(df, selected_month)
         st.plotly_chart(fig2, use_container_width=True)
+
+        fig3 = create_bar_chart(df, selected_month)
         st.plotly_chart(fig3, use_container_width=True)
+
         st.plotly_chart(fig4, use_container_width=True)
 
-        # Estatísticas adicionais
         st.subheader('Estatísticas Gerais')
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -105,29 +112,50 @@ def show_dashboard():
             gasto_medio = total_gasto / num_notas if num_notas > 0 else 0
             st.metric("Gasto médio por nota", f"R$ {gasto_medio:.2f}")
 
-        # Top 5 notas mais caras
         st.subheader('Top 5 Notas Mais Caras')
         top_5_notas = df.groupby('Nota').agg({'Valor': 'sum'}).nlargest(5, 'Valor').reset_index()
         st.table(top_5_notas)
 
-        # Filtros interativos
         st.subheader('Filtros')
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         with col1:
             selected_car = st.selectbox('Selecione um veículo', options=['Todos'] + list(df['Placa'].unique()))
         with col2:
             selected_service = st.selectbox('Selecione um tipo de serviço', options=['Todos'] + list(df['Tipo de Serviço'].unique()))
+        with col3:
+            selected_nota = st.selectbox('Selecione uma nota', options=['Todas'] + list(df['Nota'].unique()))
 
-        # Aplicar filtros
         filtered_df = df
         if selected_car != 'Todos':
             filtered_df = filtered_df[filtered_df['Placa'] == selected_car]
         if selected_service != 'Todos':
             filtered_df = filtered_df[filtered_df['Tipo de Serviço'] == selected_service]
+        if selected_nota != 'Todas':
+            filtered_df = filtered_df[filtered_df['Nota'] == selected_nota]
 
-        # Mostrar dados filtrados
         st.subheader('Dados Filtrados')
         st.dataframe(filtered_df)
+
+        # Adicionar visualizações específicas para a nota selecionada
+        if selected_nota != 'Todas':
+            st.subheader(f'Detalhes da Nota {selected_nota}')
+            nota_df = df[df['Nota'] == selected_nota]
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Valor Total", f"R$ {nota_df['Valor'].sum():.2f}")
+            with col2:
+                st.metric("Quantidade de Itens", f"{nota_df['Quantidade'].sum()}")
+            with col3:
+                st.metric("Data", nota_df['Data'].iloc[0].strftime('%d/%m/%Y'))
+
+            # Gráfico de barras para itens da nota
+            fig_nota = px.bar(nota_df, x='Tipo de Serviço', y='Valor', title=f'Itens da Nota {selected_nota}')
+            st.plotly_chart(fig_nota, use_container_width=True)
+
+            # Tabela detalhada dos itens da nota
+            st.subheader(f'Itens da Nota {selected_nota}')
+            st.table(nota_df[['Tipo de Serviço', 'Quantidade', 'Valor']])
 
     else:
         st.error('Não foi possível conectar à planilha.')
