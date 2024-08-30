@@ -402,14 +402,14 @@ def registrar_nota(sheet):
         
         with col1:
             macro = st.selectbox("Tipo de Serviço", st.session_state['macro'])
-            servico = st.selectbox('Serviço', st.session_state['servico'])
+            servico = st.selectbox('Serviço', ['Nenhum'] + st.session_state['servico'])
             novo_servico = st.text_input('Adicionar Novo Serviço')
             if novo_servico and novo_servico not in st.session_state['servico']:
                 st.session_state['servico'].append(novo_servico)
                 servico = novo_servico
 
         with col2:
-            peca = st.selectbox('Peça', st.session_state['pecas'])
+            peca = st.selectbox('Peça', ['Nenhum'] + st.session_state['pecas'])
             nova_peca = st.text_input('Adicionar Nova Peça')
             if nova_peca and nova_peca not in st.session_state['pecas']:
                 st.session_state['pecas'].append(nova_peca)
@@ -471,7 +471,7 @@ def adicionar_registro(sheet, registro):
             registro['fornecedor'],
             registro['tipo_servico'],
             registro['servico'],
-            registro['valor'],
+            f"{registro['valor']:.2f}".replace(',', '.'),
             registro['quantidade'],
             registro['peca'],
             registro['observacoes']
