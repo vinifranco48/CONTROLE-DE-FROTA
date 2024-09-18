@@ -13,13 +13,6 @@ GOOGLE_CLIENT_EMAIL = "atualizar-dados@atualizardados.iam.gserviceaccount.com"
 GOOGLE_CLIENT_ID = "105127364991999381484"
 GOOGLE_CLIENT_CERT_URL = "https://www.googleapis.com/robot/v1/metadata/x509/atualizar-dados%40atualizardados.iam.gserviceaccount.com"
 
-import re
-import pandas as pd
-import plotly.express as px
-import streamlit as st
-from google.oauth2.service_account import Credentials
-import gspread
-
 @st.cache_resource
 def connect_to_gsheet(sheet_name):
     credentials_info = {
@@ -46,7 +39,16 @@ def connect_to_gsheet(sheet_name):
     except Exception as e:
         st.error(f"Erro ao acessar a planilha: {e}")
         return None
+import re
+import pandas as pd
+import streamlit as st
+import plotly.express as px
+import plotly.graph_objects as go
+from sklearn.ensemble import IsolationForest
 
+st.set_page_config(page_title="Dashboard de Gastos com Veículos", layout="wide")
+
+# Função para conectar ao Google Sheets
 def get_sheet_data(sheet):
     return sheet.get_all_records()
 
@@ -72,21 +74,41 @@ def process_data(data):
         return None
 
     df['Data'] = pd.to_datetime(df['Data'], errors='coerce')
-
     df['Valor'] = df['Valor'].apply(convert_to_float)
     df['Quantidade'] = df['Quantidade'].apply(convert_to_float)
 
     df = df.dropna(subset=['Valor', 'Quantidade'])
-
     return df
 
-def create_dashboard(df):
-    gastos_por_mes = df.groupby(df['Data'].dt.to_period('M'))['Valor'].sum().reset_index()
-    gastos_por_mes['Data'] = gastos_por_mes['Data'].dt.to_timestamp()
-    fig1 = px.line(gastos_por_mes, x='Data', y='Valor', title='Gastos por Mês')
-    fig1.update_layout(xaxis_title='Mês', yaxis_title='Valor Total (R$)')
+# Função para criar gráfico de linhas para gastos por modelos de carros
+def create_line_chart(df):
+    gastos_por_modelo = df.groupby([df['Data'].dt.to_period('M'), 'Modelo'])['Valor'].sum().reset_index()
+    gastos_por_modelo['Data'] = gastos_por_modelo['Data'].dt.to_timestamp()
 
-    def create_pie_chart(data, period=None):
+    fig = go.Figure()
+    
+    for modelo in gastos_por_modelo['Modelo'].unique():
+        modelo_data = gastos_por_modelo[gastos_por_modelo['Modelo'] == modelo]
+        fig.add_trace(go.Scatter(
+            x=modelo_data['Data'], 
+            y=modelo_data['Valor'], 
+            mode='lines+markers',
+            name=modelo,
+            line=dict(width=2),
+            marker=dict(size=6)
+        ))
+
+    fig.update_layout(
+        title='Gastos por Modelo de Carro ao Longo do Tempo',
+        xaxis_title='Data',
+        yaxis_title='Valor Total (R$)',
+        template='plotly_white',
+        hovermode='x unified'
+    )
+    
+    return fig
+
+def create_pie_chart(data, period=None):
         if period:
             title = f'Gastos por Tipo de Serviço - {period}'
             filtered_data = data[data['Data'].dt.to_period('M') == period]
@@ -96,25 +118,25 @@ def create_dashboard(df):
         gastos_por_servico = filtered_data.groupby('Tipo de Serviço')['Valor'].sum().reset_index()
         return px.pie(gastos_por_servico, values='Valor', names='Tipo de Serviço', title=title)
 
-    def create_bar_chart(data, period=None):
-        if period:
-            title = f'Gastos por Carro - {period}'
-            filtered_data = data[data['Data'].dt.to_period('M') == period]
-        else:
-            title = 'Gastos por Carro - Todas as Datas'
-            filtered_data = data
-        gastos_por_carro = filtered_data.groupby('Placa')['Valor'].sum().reset_index()
-        return px.bar(gastos_por_carro, x='Placa', y='Valor', title=title)
+# Função para criar gráfico de barras por veículo
+def create_bar_chart(data, period=None):
+    if period:
+        title = f'Gastos por Carro - {period}'
+        filtered_data = data[data['Data'].dt.to_period('M') == period]
+    else:
+        title = 'Gastos por Carro - Todas as Datas'
+        filtered_data = data
+    gastos_por_carro = filtered_data.groupby('Placa')['Valor'].sum().reset_index()
+    fig = px.bar(gastos_por_carro, x='Placa', y='Valor', title=title)
+    fig.update_traces(marker_color='#3366CC')
+    fig.update_layout(
+        template='plotly_white',
+        xaxis_title='Placa do Veículo',
+        yaxis_title='Valor Total (R$)'
+    )
+    return fig
 
-    fig4 = px.box(df, y='Valor', title='Distribuição dos Gastos')
-    fig4.update_layout(yaxis_title='Valor (R$)')
-
-    return fig1, create_pie_chart, create_bar_chart, fig4
-
-def update_sheet_values(sheet, cell_range, values):
-    values_str = [[f"{value:.2f}".replace(',', '.') for value in row] for row in values]
-    sheet.update(cell_range, values_str)
-
+# Função principal para exibir o dashboard
 def show_dashboard():
     st.title('Dashboard de Gastos com Veículos')
 
@@ -127,44 +149,62 @@ def show_dashboard():
             st.warning("Não há dados disponíveis na planilha. Por favor, verifique se a planilha contém informações.")
             return
 
-        num_notas = df['Nota'].nunique()
-
-        st.subheader('Selecione o intervalo de datas')
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            min_date = df['Data'].min().date()
-            max_date = df['Data'].max().date()
-            start_date = st.date_input('Data inicial', min_date)
-        with col2:
-            end_date = st.date_input('Data final', max_date)
-        with col3:
-            all_dates = st.checkbox('Todas as datas', value=True)
+        st.sidebar.header('Filtros')
+        min_date = df['Data'].min().date()
+        max_date = df['Data'].max().date()
+        start_date = st.sidebar.date_input('Data inicial', min_date)
+        end_date = st.sidebar.date_input('Data final', max_date)
+        all_dates = st.sidebar.checkbox('Todas as datas', value=True)
 
         if all_dates:
             filtered_df = df
         else:
             filtered_df = df[(df['Data'].dt.date >= start_date) & (df['Data'].dt.date <= end_date)]
 
-        fig1, create_pie_chart, create_bar_chart, fig4 = create_dashboard(filtered_df)
-
+        # Gráfico de Gastos Mensais
+        gastos_por_mes = filtered_df.groupby(filtered_df['Data'].dt.to_period('M'))['Valor'].sum().reset_index()
+        gastos_por_mes['Data'] = gastos_por_mes['Data'].dt.to_timestamp()
+        fig1 = go.Figure()
+        fig1.add_trace(go.Scatter(
+            x=gastos_por_mes['Data'], 
+            y=gastos_por_mes['Valor'], 
+            mode='lines+markers',
+            line=dict(color='#3366CC', width=3),
+            marker=dict(size=8, color='#3366CC')
+        ))
+        fig1.update_layout(
+            title='Gastos por Mês',
+            xaxis_title='Mês',
+            yaxis_title='Valor Total (R$)',
+            template='plotly_white',
+            hovermode='x unified'
+        )
         st.plotly_chart(fig1, use_container_width=True)
 
+        # Seleção de mês para os gráficos detalhados
         months = filtered_df['Data'].dt.to_period('M').unique()
-        month_options = ['Todas as datas'] + list(months)
-        selected_month = st.selectbox('Selecione o mês para os gráficos de pizza e barras', options=month_options)
+        month_options = ['Todas as datas'] + list(months.astype(str))
+        selected_month = st.selectbox('Selecione o mês para os gráficos detalhados', options=month_options)
 
+        # Gráfico de Pizza
         if selected_month == 'Todas as datas':
             fig2 = create_pie_chart(filtered_df)
-            fig3 = create_bar_chart(filtered_df)
         else:
-            fig2 = create_pie_chart(filtered_df, selected_month)
-            fig3 = create_bar_chart(filtered_df, selected_month)
-
+            selected_period = pd.Period(selected_month)
+            fig2 = create_pie_chart(filtered_df, selected_period)
+        
         st.plotly_chart(fig2, use_container_width=True)
+
+        # Gráfico de barras
+        fig3 = create_bar_chart(filtered_df, selected_month if selected_month != 'Todas as datas' else None)
         st.plotly_chart(fig3, use_container_width=True)
 
+        # Novo gráfico de linhas para análise de gastos por modelos de carros
+        st.subheader('Análise de Gastos por Modelo de Carro')
+        fig4 = create_line_chart(filtered_df)
         st.plotly_chart(fig4, use_container_width=True)
 
+        # Estatísticas Gerais
         st.subheader('Estatísticas Gerais')
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -177,49 +217,18 @@ def show_dashboard():
             gasto_medio = total_gasto / num_notas if num_notas > 0 else 0
             st.metric("Gasto médio por nota", f"R$ {gasto_medio:.2f}")
 
-        st.subheader('Top 5 Notas Mais Caras')
-        top_5_notas = filtered_df.groupby('Nota').agg({'Valor': 'sum'}).nlargest(5, 'Valor').reset_index()
-        st.table(top_5_notas)
-
-        st.subheader('Filtros')
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            selected_car = st.selectbox('Selecione um veículo', options=['Todos'] + list(filtered_df['Placa'].unique()))
-        with col2:
-            selected_service = st.selectbox('Selecione um tipo de serviço', options=['Todos'] + list(filtered_df['Tipo de Serviço'].unique()))
-        with col3:
-            selected_nota = st.selectbox('Selecione uma nota', options=['Todas'] + list(filtered_df['Nota'].unique()))
-
-        if selected_car != 'Todos':
-            filtered_df = filtered_df[filtered_df['Placa'] == selected_car]
-        if selected_service != 'Todos':
-            filtered_df = filtered_df[filtered_df['Tipo de Serviço'] == selected_service]
-        if selected_nota != 'Todas':
-            filtered_df = filtered_df[filtered_df['Nota'] == selected_nota]
-
-        st.subheader('Dados Filtrados')
-        st.dataframe(filtered_df)
-
-        if selected_nota != 'Todas':
-            st.subheader(f'Detalhes da Nota {selected_nota}')
-            nota_df = filtered_df[filtered_df['Nota'] == selected_nota]
-
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("Valor Total", f"R$ {nota_df['Valor'].sum():.2f}")
-            with col2:
-                st.metric("Quantidade de Itens", f"{nota_df['Quantidade'].sum()}")
-            with col3:
-                st.metric("Data", nota_df['Data'].iloc[0].strftime('%d/%m/%Y'))
-
-            fig_nota = px.bar(nota_df, x='Tipo de Serviço', y='Valor', title=f'Itens da Nota {selected_nota}')
-            st.plotly_chart(fig_nota, use_container_width=True)
-
-            st.subheader(f'Itens da Nota {selected_nota}')
-            st.table(nota_df[['Tipo de Serviço', 'Quantidade', 'Valor']])
-
     else:
         st.error('Não foi possível conectar à planilha.')
 
 if __name__ == "__main__":
     show_dashboard()
+
+
+
+
+
+
+
+
+
+
