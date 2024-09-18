@@ -107,15 +107,16 @@ def create_line_chart(df):
     
     return fig
 
+# Função para criar gráfico de pizza
 def create_pie_chart(data, period=None):
-        if period:
-            title = f'Gastos por Tipo de Serviço - {period}'
-            filtered_data = data[data['Data'].dt.to_period('M') == period]
-        else:
-            title = 'Gastos por Tipo de Serviço - Todas as Datas'
-            filtered_data = data
-        gastos_por_servico = filtered_data.groupby('Tipo de Serviço')['Valor'].sum().reset_index()
-        return px.pie(gastos_por_servico, values='Valor', names='Tipo de Serviço', title=title)
+    if period:
+        title = f'Gastos por Tipo de Serviço - {period}'
+        filtered_data = data[data['Data'].dt.to_period('M') == period]
+    else:
+        title = 'Gastos por Tipo de Serviço - Todas as Datas'
+        filtered_data = data
+    gastos_por_servico = filtered_data.groupby('Tipo de Serviço')['Valor'].sum().reset_index()
+    return px.pie(gastos_por_servico, values='Valor', names='Tipo de Serviço', title=title)
 
 # Função para criar gráfico de barras por veículo
 def create_bar_chart(data, period=None):
@@ -159,6 +160,14 @@ def show_dashboard():
             filtered_df = df
         else:
             filtered_df = df[(df['Data'].dt.date >= start_date) & (df['Data'].dt.date <= end_date)]
+
+        # Filtro por Modelo de Carro
+        modelos_disponiveis = df['Modelo'].unique()
+        modelos_selecionados = st.sidebar.multiselect('Selecione o modelo do carro', modelos_disponiveis, default=modelos_disponiveis)
+
+        # Aplicar o filtro de modelo no DataFrame
+        if modelos_selecionados:
+            filtered_df = filtered_df[filtered_df['Modelo'].isin(modelos_selecionados)]
 
         # Gráfico de Gastos Mensais
         gastos_por_mes = filtered_df.groupby(filtered_df['Data'].dt.to_period('M'))['Valor'].sum().reset_index()
@@ -215,6 +224,15 @@ def show_dashboard():
         with col3:
             gasto_medio = total_gasto / num_notas if num_notas > 0 else 0
             st.metric("Gasto médio por nota", f"R$ {gasto_medio:.2f}")
+
+        # Verificação das colunas disponíveis
+        cols_to_display = ['Data', 'Nota', 'Fornecedor', 'Modelo', 'Placa', 'Item da Nota', 'Quantidade', 'Valor', 'Peça']
+        if 'Valor Desconto' in filtered_df.columns:
+            cols_to_display.append('Valor Desconto')
+
+        # Tabela de Notas com Itens
+        st.subheader('Detalhes das Notas e Itens')
+        st.dataframe(filtered_df[cols_to_display])
 
     else:
         st.error('Não foi possível conectar à planilha.')

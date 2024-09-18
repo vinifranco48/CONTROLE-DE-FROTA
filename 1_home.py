@@ -79,7 +79,7 @@ def initialize_session_state():
     if 'carros' not in st.session_state:
         st.session_state['carros'] = [
             {'placa': 'PSK9760', 'modelo': 'S10 ESTREITO'},
-            {'placa': 'PTA8229', 'modelo': 'S10'},
+            {'placa': 'PTA8229', 'modelo': 'S10 Comercial'},
             {'placa': 'PTP4215', 'modelo': 'CAMINHÃO VOLVO'},
             {'placa': 'PTQ9932', 'modelo': 'HILUX'},
             {'placa': 'PTS8I32', 'modelo': 'S10'},
