@@ -195,7 +195,7 @@ def show_dashboard():
         gasto_medio = total_gasto / num_notas if num_notas > 0 else 0
         filtered_df_filtered = filtered_df.query('Peça != "nenhum"')
         peca_mais_comprada = filtered_df_filtered.groupby('Peça')['Quantidade'].sum().idxmax()
-        fornecedor_mais_gasto = filtered_df.groupby('Fornecedor')['Valor'].sum().idxmax()
+        quantidade_peca_mais_comprada = filtered_df_filtered.groupby('Peça')['Quantidade'].sum().max()
 
         col1, col2, col3, col4, col5 = st.columns(5)
         with col1:
@@ -207,7 +207,7 @@ def show_dashboard():
         with col4:
             st.metric("Peça mais comprada", peca_mais_comprada)
         with col5:
-            st.metric("Fornecedor com maior gasto", fornecedor_mais_gasto)
+            st.metric("Quantidade comprada", f"{quantidade_peca_mais_comprada:.0f}")
 
         # Gráfico de Gastos por Mês
         gastos_por_mes = filtered_df.groupby(filtered_df['Data'].dt.to_period('M'))['Valor'].sum().reset_index()
