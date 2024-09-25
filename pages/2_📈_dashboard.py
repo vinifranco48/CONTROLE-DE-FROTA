@@ -79,7 +79,6 @@ def process_data(data):
     df = df.dropna(subset=['Valor', 'Quantidade'])
     return df
 
-# Função para criar gráfico de linhas para gastos por modelos de carros
 def create_line_chart(df):
     gastos_por_modelo = df.groupby([df['Data'].dt.to_period('M'), 'Modelo'])['Valor'].sum().reset_index()
     gastos_por_modelo['Data'] = gastos_por_modelo['Data'].dt.to_timestamp()
@@ -136,10 +135,11 @@ def create_bar_chart(data, period=None):
     gastos_por_carro = filtered_data.groupby('Placa')['Valor'].sum().reset_index().sort_values('Valor', ascending=False)
     
     base_color = '#3366CC'
-    dark_color = '#1A3366'  # Versão mais escura do azul base
+    dark_color = '#1A3366'
     
     colors = [base_color] * len(gastos_por_carro)
-    colors[0] = dark_color  # Cor mais escura para o maior valor
+    if len(colors) > 0:
+        colors[0] = dark_color  
     
     fig = go.Figure(data=[
         go.Bar(x=gastos_por_carro['Placa'], y=gastos_por_carro['Valor'], marker_color=colors)
@@ -167,7 +167,6 @@ def show_dashboard():
             st.warning("Não há dados disponíveis na planilha. Por favor, verifique se a planilha contém informações.")
             return
 
-        # Sidebar - Filtros
         st.sidebar.header('Filtros')
         min_date = df['Data'].min().date()
         max_date = df['Data'].max().date()
@@ -180,17 +179,21 @@ def show_dashboard():
         else:
             filtered_df = df[(df['Data'].dt.date >= start_date) & (df['Data'].dt.date <= end_date)]
 
-        # Filtro por Modelo
         modelos_disponiveis = df['Modelo'].unique()
         modelos_selecionados = st.sidebar.multiselect('Selecione o modelo do carro', modelos_disponiveis, default=modelos_disponiveis)
 
-        # Aplicar filtros
+        notas_disponiveis = df['Nota'].unique()
+        nota_selecionada = st.sidebar.selectbox('Selecione a nota', ['Todas as notas'] + list(notas_disponiveis))
+
         if modelos_selecionados:
             filtered_df = filtered_df[filtered_df['Modelo'].isin(modelos_selecionados)]
 
-        # Estatísticas Gerais
+        if nota_selecionada != 'Todas as notas':
+            filtered_df = filtered_df[filtered_df['Nota'] == nota_selecionada]
+
         st.subheader('Estatísticas Gerais')
-        total_gasto = (filtered_df['Valor'] * filtered_df['Quantidade']).sum()
+        total_gasto = filtered_df['Valor'].sum()
+
         num_notas = filtered_df['Nota'].nunique()
         gasto_medio = total_gasto / num_notas if num_notas > 0 else 0
         filtered_df_filtered = filtered_df.query('Peça != "nenhum"')
@@ -214,7 +217,6 @@ def show_dashboard():
         with col5:
             st.metric("Quantidade comprada", f"{quantidade_peca_mais_comprada:.0f}" if quantidade_peca_mais_comprada else "N/A")
 
-        # Gráfico de Gastos por Mês
         gastos_por_mes = filtered_df.groupby(filtered_df['Data'].dt.to_period('M'))['Valor'].sum().reset_index()
         gastos_por_mes['Data'] = gastos_por_mes['Data'].dt.to_timestamp()
         fig1 = go.Figure()
@@ -235,25 +237,20 @@ def show_dashboard():
         )
         st.plotly_chart(fig1, use_container_width=True)
 
-        # Gráficos Detalhados
         selected_month = st.selectbox('Selecione o mês para os gráficos detalhados', options=['Todas as datas'] + list(gastos_por_mes['Data'].dt.strftime('%Y-%m')))
         if selected_month != 'Todas as datas':
             filtered_df = filtered_df[filtered_df['Data'].dt.strftime('%Y-%m') == selected_month]
 
-        # Gráfico de Pizza - Gastos por Tipo de Serviço
         fig2 = create_pie_chart(filtered_df)
         st.plotly_chart(fig2, use_container_width=True)
 
-        # Gráfico de Barras - Gastos por Carro
         fig3 = create_bar_chart(filtered_df)
         st.plotly_chart(fig3, use_container_width=True)
 
-        # Novo Gráfico de Linhas - Gastos por Modelo
         st.subheader('Análise de Gastos por Modelo de Carro')
         fig4 = create_line_chart(filtered_df)
         st.plotly_chart(fig4, use_container_width=True)
 
-        # Tabela de Detalhes
         cols_to_display = ['Data', 'Nota', 'Fornecedor', 'Modelo', 'Placa', 'Item da Nota', 'Quantidade', 'Valor', 'Peça']
         st.subheader('Detalhes das Notas e Itens')
         st.dataframe(filtered_df[cols_to_display])
