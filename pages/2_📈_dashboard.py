@@ -127,12 +127,13 @@ def create_pie_chart(data, period=None):
 
 def create_bar_chart(data, period=None):
     if period:
-        title = f'Gastos por Carro - {period}'
+        title = f'Gastos por Modelo de Carro - {period}'
         filtered_data = data[data['Data'].dt.to_period('M') == period]
     else:
-        title = 'Gastos por Carro - Todas as Datas'
+        title = 'Gastos por Modelo de Carro - Todas as Datas'
         filtered_data = data
-    gastos_por_carro = filtered_data.groupby('Placa')['Valor'].sum().reset_index().sort_values('Valor', ascending=False)
+    
+    gastos_por_carro = filtered_data.groupby('Modelo')['Valor'].sum().reset_index().sort_values('Valor', ascending=False)
     
     base_color = '#3366CC'
     dark_color = '#1A3366'
@@ -142,11 +143,11 @@ def create_bar_chart(data, period=None):
         colors[0] = dark_color  
     
     fig = go.Figure(data=[
-        go.Bar(x=gastos_por_carro['Placa'], y=gastos_por_carro['Valor'], marker_color=colors)
+        go.Bar(x=gastos_por_carro['Modelo'], y=gastos_por_carro['Valor'], marker_color=colors)
     ])
     fig.update_layout(
         title=title,
-        xaxis_title='Placa do Veículo',
+        xaxis_title='Modelo do Veículo',
         yaxis_title='Valor Total (R$)',
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
@@ -196,6 +197,11 @@ def show_dashboard():
 
         num_notas = filtered_df['Nota'].nunique()
         gasto_medio = total_gasto / num_notas if num_notas > 0 else 0
+        
+        # Cálculo da média de gastos por mês
+        gastos_por_mes = filtered_df.groupby(filtered_df['Data'].dt.to_period('M'))['Valor'].sum()
+        media_gastos_por_mes = gastos_por_mes.mean()
+
         filtered_df_filtered = filtered_df.query('Peça != "nenhum"')
         peca_mais_comprada = None
         quantidade_peca_mais_comprada = 0
@@ -205,7 +211,7 @@ def show_dashboard():
                 peca_mais_comprada = peca_quantidade.idxmax()
                 quantidade_peca_mais_comprada = peca_quantidade.max()
 
-        col1, col2, col3, col4, col5 = st.columns(5)
+        col1, col2, col3, col4, col5, col6 = st.columns(6)
         with col1:
             st.metric("Total gasto", f"R$ {total_gasto:.2f}")
         with col2:
@@ -213,8 +219,10 @@ def show_dashboard():
         with col3:
             st.metric("Gasto médio por nota", f"R$ {gasto_medio:.2f}")
         with col4:
-            st.metric("Peça mais comprada", peca_mais_comprada if peca_mais_comprada else "N/A")
+            st.metric("Média de gastos por mês", f"R$ {media_gastos_por_mes:.2f}")
         with col5:
+            st.metric("Item mais comprado", peca_mais_comprada if peca_mais_comprada else "N/A")
+        with col6:
             st.metric("Quantidade comprada", f"{quantidade_peca_mais_comprada:.0f}" if quantidade_peca_mais_comprada else "N/A")
 
         gastos_por_mes = filtered_df.groupby(filtered_df['Data'].dt.to_period('M'))['Valor'].sum().reset_index()
