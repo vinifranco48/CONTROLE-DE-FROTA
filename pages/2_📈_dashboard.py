@@ -49,7 +49,8 @@ st.set_page_config(page_title="Dashboard de Gastos com Veículos", layout="wide"
 
 # Função para conectar ao Google Sheets
 def get_sheet_data(sheet):
-    return sheet.get_all_records()
+    expected_headers = ['Data', 'Nota', 'Fornecedor', 'Modelo', 'Placa', 'Item da Nota', 'Quantidade', 'Valor', 'Peça', 'Tipo de Serviço']
+    return sheet.get_all_records(expected_headers=expected_headers)
 
 def convert_to_float(value):
     if isinstance(value, (int, float)):
